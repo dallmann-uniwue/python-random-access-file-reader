@@ -31,6 +31,24 @@ class ReaderTest(unittest.TestCase):
         reader = RandomAccessReader(path, ignore_blank_lines=True)
         self.assertGreater(num_lines, reader.number_of_lines)
 
+    def test_cache_is_created(self):
+        path = os.path.dirname(os.path.abspath(__file__)) + "/test_file.csv"
+        reader = RandomAccessReader(path, use_cache=True)
+
+        cache_file_path = os.path.dirname(os.path.abspath(__file__)) + "/test_file.csv"
+        self.assertTrue(os.path.exists(cache_file_path))
+
+    def test_cached_file(self):
+        path = os.path.dirname(os.path.abspath(__file__)) + "/test_file.csv"
+        reader = RandomAccessReader(path, use_cache=True)
+        reader = RandomAccessReader(path, use_cache=True)
+
+        self.assertTrue(reader.number_of_lines == 34)
+
+        lines = reader.get_lines(3, 3)
+        self.assertTrue(len(lines) == 3)
+        self.assertTrue('Learn Tons of Blogging Tips &Tricks' in lines[-1])
+
 
 class CsvReaderTest(unittest.TestCase):
 

@@ -10,8 +10,10 @@ Inspired by: http://stackoverflow.com/a/35785248/1857802 and http://stackoverflo
 # =============
 
 import csv
-from io import StringIO
 import six
+from pickle import load, dump
+from io import StringIO
+from pathlib import Path
 
 # ==========
 # classes
@@ -20,15 +22,18 @@ import six
 
 class RandomAccessReader(object):
 
-    def __init__(self, filepath, endline_character='\n', ignore_blank_lines=False):
+    CACHE_FILE_SUFFIX = ".idx"
+
+    def __init__(self, filepath, endline_character='\n', ignore_blank_lines=False, use_cache=False):
         """
         :param filepath:  Absolute path to file
         :param endline_character: Delimiter for lines. Defaults to newline character (\n)
         """
-        self._filepath = filepath
+        self._filepath = Path(filepath)
+        self._cache_file_path =  self._filepath.parent / (self._filepath.name + self.CACHE_FILE_SUFFIX) if use_cache else None
         self._endline = endline_character
         self._ignore_blanks = ignore_blank_lines
-        self._lines = self._get_line_data()
+        self._lines = self._get_line_data(use_cache)
 
     @property
     def number_of_lines(self):
@@ -37,8 +42,13 @@ class RandomAccessReader(object):
     def get_line_indexes(self):
         return range(len(self._lines))
 
-    def _get_line_data(self):
-        f = open(self._filepath)
+    def _get_line_data(self, use_cache):
+        # use cache if it exists
+        if use_cache and self._cache_file_path.exists():
+                with self._cache_file_path.open("rb") as file:
+                    return load(file)
+
+        f = self._filepath.open()
         lines = []
         start_position = 0
         has_more = True
@@ -58,6 +68,12 @@ class RandomAccessReader(object):
 
             current_line += 1
         f.close()
+
+        # write cache file if it did not exist, but the user requested it
+        if use_cache and not self._cache_file_path.exists():
+            with self._cache_file_path.open("wb") as file:
+                dump(lines, file)
+
         return lines
 
     def get_lines(self, line_number, amount=1):
@@ -68,7 +84,7 @@ class RandomAccessReader(object):
         :return: str
         """
         lines = []
-        with open(self._filepath) as f:
+        with self._filepath.open() as f:
             for x in range(amount):
                 line_data = self._lines[line_number]
                 f.seek(line_data['position'])
